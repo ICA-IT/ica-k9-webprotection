@@ -1,0 +1,46 @@
+[Package]
+version: 1.corr1corr
+depends: 
+
+[Product]
+type: localboot
+id: ica-k9-webprotection
+name: ICA K-9 Webprotection
+description: Blue Coat K-9 Web Protection system: Protects web browser from unauthorized access to non-family friendly web sites
+advice: 
+version: 9
+priority: 0
+licenseRequired: False
+productClasses: 
+setupScript: setup.opsiscript
+uninstallScript: uninstall.opsiscript
+updateScript: 
+alwaysScript: 
+onceScript: 
+customScript: 
+userLoginScript: 
+
+[ProductProperty]
+type: unicode
+name: licensekey
+multivalue: False
+editable: True
+description: License Key
+values: [""]
+default: []
+
+[ProductProperty]
+type: unicode
+name: installmode
+multivalue: True
+editable: False
+description: Install mode
+values: ["copy files only", "full install", "no install"]
+default: ["copy files only"]
+
+[Changelog]
+ica-k9-webprotection (9-1) stable; urgency=low
+
+	* initial: created by opsi-setup-detector
+
+ -- opsisetupdetector.exe <info@uib.de>  2/18/2018 14:11:02

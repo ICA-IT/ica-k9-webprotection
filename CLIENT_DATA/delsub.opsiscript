@@ -1,0 +1,84 @@
+; Copyright (c) uib gmbh (www.uib.de)
+; This sourcecode is owned by uib gmbh
+; and published under the Terms of the General Public License.
+; credits: http://www.opsi.org/en/credits/
+
+include_append "%ScriptPath%\check_nsis_exitcode.opsiscript"
+
+DefVar $found$
+DefVar $UninstallProgram$
+
+Set $found$     = "false"
+Set $MsiId$     = ''
+
+; case on Install mode ============================================================
+; "copy files only"
+   if ($PROP_installmode$ = "copy files only")
+       Message "Uninstalling " + $ProductId$ + " ..."
+       comment "Deleting files"
+	   Files_uninstall_installer
+	   comment "Deleting shortcuts"
+	   LinkFolder_uninstall
+       set $ExitCode$ = "0"
+   endif
+; "no install"   
+   if ($PROP_installmode$ = "no install")
+  	   set $ExitCode$ = "0"
+   endif
+; "full install"    
+   if ($PROP_installmode$ = "full install")
+      Message "Uninstalling " + $ProductId$ + " ..."
+      if ($SetupType$ = "nsis")
+      	 comment "Deleting shortcuts"
+      	 LinkFolder_uninstall2
+         Set $UninstallProgram$ = $InstallDir$ + "\uninst.exe"
+         comment "Checking for " + $UninstallProgram$ + " in " + $InstallDir$
+         if (not($InstallDir$ = '')) and FileExists($UninstallProgram$)
+            comment "Uninstall program found, starting uninstall"
+            Winbatch_uninstall_nsis /WaitforProcessending "Au_.exe" /Timeoutseconds 10
+  ;          sub_check_exitcode
+            ExitWindows /Reboot
+         endif
+      endif
+;      if (not($InstallDir$ = '')) and (not($InstallDir$ = "not used"))
+;         Files_uninstall
+;      endif
+; end of case statement ============================================================  
+   endif
+
+;-----------------------------------------------------
+; delete installer files and link
+
+[Files_uninstall_installer]
+; Example for recursively deleting the installation directory:
+;
+ del -sf "$InstallDir$\"
+
+[LinkFolder_uninstall]
+; Example of deleting a folder from AllUsers startmenu:
+;
+ set_basefolder common_programs
+ delete_subfolder $ProductName$
+;
+; Example of deleting a shortcut from AllUsers desktop:
+;
+ set_basefolder common_desktopdirectory
+ set_subfolder ""
+ delete_element $ProductName$
+
+[LinkFolder_uninstall2]
+; Example of deleting a folder from AllUsers startmenu:
+;
+ set_basefolder common_startmenu
+ delete_subfolder $ProductName2$
+
+;-----------------------------------------------------
+
+[Winbatch_uninstall_nsis]
+;"$UninstallProgram$" /S
+  "%ScriptPath%\k-9uninstall.exe" "$UninstallProgram$"
+;-----------------------------------------------------
+
+;[Files_uninstall]
+;del -sf "$InstallDir$\"
+;-----------------------------------------------------

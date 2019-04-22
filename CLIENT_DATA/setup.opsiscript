@@ -1,0 +1,221 @@
+; ----------------------------------------------------------------
+; Copyright (c) uib gmbh (www.uib.de)
+; This sourcecode is owned by uib
+; and published under the Terms of the General Public License.
+; credits: http://www.opsi.org/en/credits/
+; ----------------------------------------------------------------
+
+;****************************************
+; SETUPTYPE      nsis
+;****************************************
+; PRODUCTID      ica-k9-webprotection
+; SETUPFILE      k9-webprotection.exe
+;****************************************
+; LICENSE        true     
+; PRODUCTDESC    Blue Coat K-9 Web Protection system: Protects web browser from unauthorized access to non-family friendly web sites
+
+; PRODUCTNAME    k9-webprotection
+; PRODUCTSIZE    9 MB
+; PRODUCTVER     9
+;****************************************
+; SETUPSCRIPT    setup.opsiscript
+; UNINSSCRIPT    uninstall.opsiscript
+;****************************************
+; MSIID          
+; USE-MST        
+; INSTALLDIR     c:\Program Files\Blue Coat K9 Web Protection
+;****************************************
+; TIMESTAMP      2/18/2018 14:11:02
+;****************************************
+
+[Actions]
+requiredWinstVersion >= "4.11.4.3"
+ScriptErrorMessages = false
+
+DefVar $SetupType$
+DefVar $ProductId$ 
+DefVar $Setupfile$ 
+DefVar $InstallDir$
+DefVar $MinimumSpace$
+DefVar $ExitCode$
+DefVar $ErrorMsg$
+DefVar $LicenseRequired$
+DefVar $LicenseKey$
+DefVar $LicensePool$
+DefVar $MsiId$
+DefVar $NsisInstallBatch$
+DefVar $LogDir$
+DefVar $PROP_licensekey$
+DefVar $PROP_installmode$
+DefVar $ProductName$
+DefVar $ProductName2$
+
+Set $LogDir$ = "%opsiLogDir%"
+set $PROP_licensekey$ = GetProductProperty("licensekey","")
+set $PROP_installmode$ = GetProductProperty("installmode","copy files only")
+
+include_append "%ScriptPath%\check_nsis_exitcode.opsiscript"
+
+; ----------------------------------------------------------------
+Set $SetupType$       = "nsis"
+; ----------------------------------------------------------------
+
+; $ProductId$ is the name of the product in opsi, only lower letters, no umlauts, no white spaces, use '-' as a seperator
+Set $ProductId$       = "ica-k9-webprotection"
+Set $ProductName$       = "ICA K-9 Webprotection"
+Set $ProductName2$      = "Blue Coat K9 Web Protection"
+Set $Setupfile$       = "k9-webprotection.exe"
+; the path where we find the product after the installation
+Set $InstallDir$      = "c:\Program Files\Blue Coat K9 Web Protection"
+Set $LicenseRequired$ = "true"
+Set $LicensePool$     = "p_" + $ProductId$
+Set $MsiId$           = ""
+Set $MinimumSpace$    = "9 MB"
+; ----------------------------------------------------------------
+; ----------------------------------------------------------------
+
+if not(HasMinimumSpace ("%SystemDrive%", $MinimumSpace$))
+   LogError "Not enough space on %SystemDrive%, " + $MinimumSpace$ + " on drive %SystemDrive% needed for " + $ProductId$
+   isFatalError "No Space"
+   ; Stop process and set installation status to failed
+else
+   comment "Show product picture"
+   ShowBitmap "%ScriptPath%\" + $ProductId$ + ".png" $ProductId$
+
+   if FileExists("%ScriptPath%\delsub.opsiscript")
+      comment "Start uninstall sub section"
+      Sub "%ScriptPath%\delsub.opsiscript"
+   endif
+   
+   Message "Installing " + $ProductId$ + " ..."
+   
+   if $LicenseRequired$ = "true"
+      comment "Licensing required, reserve license and get license key"
+      Sub_get_licensekey
+   endif
+
+; case on Install mode ============================================================
+; "copy files only"
+   if ($PROP_installmode$ = "copy files only")
+       comment "Copy files"
+	   Files_install_32 /32Bit
+	   comment "Create shortcuts"
+	   LinkFolder_install
+       set $ExitCode$ = "0"
+   endif
+; "no install"   
+   if ($PROP_installmode$ = "no install")
+       comment "Skipping... no K-9 on this computer"
+   	   set $ExitCode$ = "0"
+   endif
+; "full install"    
+   if ($PROP_installmode$ = "full install")
+      if ($SetupType$ = "nsis")
+         Set $NsisInstallBatch$ = "%ScriptPath%\k9-webprotection.exe /S"
+         if not ($InstallDir$ = '')
+            Set $NsisInstallBatch$ = $NsisInstallBatch$ + ' /D="' + $InstallDir$ + '"'
+         endif
+      endif
+   
+      comment "Start setup program"
+      ChangeDirectory "%SCRIPTPATH%"
+      ;----------------------------------------------
+      Winbatch_install_nsis
+      ;----------------------------------------------
+      Sub_check_exitcode
+      ExitWindows /Reboot
+; end of case statement ============================================================  
+   endif
+; end if on files space   
+endif
+
+; ----------------------------------------------------------------
+; files section
+; ----------------------------------------------------------------
+
+[Files_install_32]
+; Example of recursively copying some files into the installation directory:
+;
+ copy -s "%ScriptPath%\k9-webprotection.exe" "$InstallDir$"
+
+; ----------------------------------------------------------------
+; links section
+; ----------------------------------------------------------------
+
+[LinkFolder_install]
+; Example of deleting a folder from AllUsers startmenu:
+;
+ set_basefolder common_programs
+ delete_subfolder $ProductName$
+;
+; Example of creating an shortcut to the installed exe in AllUsers startmenu:
+;
+ set_basefolder common_programs
+ set_subfolder $ProductName$
+;
+ set_link
+ 	name: Install K9 protection
+ 	target: $InstallDir$\k9-webprotection.exe
+; 	parameters:
+ 	working_dir: $InstallDir$
+; 	icon_file: $InstallDir$\k9-webprotection.exe
+; 	icon_index: 1
+ end_link
+;
+
+; ----------------------------------------------------------------
+; install section
+; ----------------------------------------------------------------
+
+[Winbatch_install_nsis]
+; Scriptable Install System 
+  "%ScriptPath%\k-9install.exe" $LicenseKey$ "%ScriptPath%\k9-webprotection.exe"
+; ----------------------------------------------------------------
+
+
+[Sub_get_licensekey]
+if opsiLicenseManagementEnabled
+   comment "License management is enabled and will be used"
+
+   comment "Trying to get a license key"
+   Set $LicenseKey$ = demandLicenseKey ($LicensePool$)
+   ; If there is an assignment of exactly one licensepool to the product the following call is possible:
+   ; Set $LicenseKey$ = demandLicenseKey ("", $ProductId$)
+   ;
+   ; If there is an assignment of a license pool to a windows software id, it is possible to use:
+   ; DefVar $WindowsSoftwareId$
+   ; $WindowsSoftwareId$ = "..."
+   ; Set $LicenseKey$ = demandLicenseKey ("", "", $WindowsSoftwareId$)
+
+   DefVar $ServiceErrorClass$
+   set $ServiceErrorClass$ = getLastServiceErrorClass
+   comment "Error class: " + $ServiceErrorClass$
+   
+   if $ServiceErrorClass$ = "None"
+      comment "Everything fine, we got the license key '" + $LicenseKey$ + "'"
+   else
+      if $ServiceErrorClass$ = "LicenseConfigurationError"
+         LogError "Fatal: license configuration must be corrected"
+         LogError getLastServiceErrorMessage
+         isFatalError
+      else 
+         if $ServiceErrorClass$ = "LicenseMissingError"
+            LogError "Fatal: required license is not supplied"
+            isFatalError
+         endif
+      endif
+   endif
+else
+;   LogError "Fatal: license required, but license management not enabled"
+;   isFatalError
+   Set $LicenseKey$ = $PROP_licensekey$
+   if ($LicenseKey$ = "")
+      comment "No license key found"
+   else
+   	  comment "Everything fine, we got the license key '" + $LicenseKey$ + "'"
+   endif
+endif
+
+; ----------------------------------------------------------------
+; ----------------------------------------------------------------
+
